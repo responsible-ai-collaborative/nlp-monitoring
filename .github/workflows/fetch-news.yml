@@ -16,5 +16,8 @@ jobs:
       - name: Clone the repository
         run: git clone https://github.com/responsible-ai-collaborative/nlp-monitoring.git
 
+      - name: Install dependencies
+        run: pip3 install feedparser
+
       - name: fetch-news.py
         run: python3 nlp-monitoring/fetch-news.py
