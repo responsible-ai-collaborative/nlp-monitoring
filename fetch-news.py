@@ -3,6 +3,12 @@ import requests
 
 print("Fetching news...")
 
-feeds = []
+feed_urls = []
 with open('feeds.txt', 'r') as f:
-    feeds = f.readlines()
+    feed_urls = f.readlines()
+
+feeds = []
+for feed_url in feed_urls:
+    feed = feedparse.parse_feed(feed_url)
+    print(feed)
+    feeds.append(feed)

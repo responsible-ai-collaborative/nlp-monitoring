@@ -3,6 +3,9 @@ name: 'Fetch news'
 on:
   schedule:
     - cron: "0 6,18 * * *"
+  push:
+    branches:
+      - main
 
 jobs:
   deploy:
@@ -13,3 +16,5 @@ jobs:
       - name: Clone the repository
         run: git clone https://github.com/responsible-ai-collaborative/nlp-monitoring.git
 
+      - name: fetch-news.py
+        run: python3 nlp-monitoring/fetch-news.yml
