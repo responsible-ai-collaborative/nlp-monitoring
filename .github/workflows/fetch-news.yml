@@ -20,4 +20,5 @@ jobs:
         run: pip3 install feedparser
 
       - name: fetch-news.py
-        run: python3 nlp-monitoring/fetch-news.py
+        run: python3 fetch-news.py
+        working-directory: ./nlp-monitoring
