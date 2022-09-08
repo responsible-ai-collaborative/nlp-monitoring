@@ -3,6 +3,10 @@ name: 'Fetch news'
 on:
   schedule:
     - cron: "0 6,18 * * *"
+  push:
+    branches:
+      - main 
+      - testing
 
 jobs:
   deploy:
@@ -12,4 +16,7 @@ jobs:
     steps:
       - name: Clone the repository
         run: git@github.com:responsible-ai-collaborative/nlp-monitoring.git
+
+      - name: Test if it worked
+        run: curl http://lmcnulty.me/nlp-monitoring-running
 
