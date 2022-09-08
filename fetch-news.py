@@ -9,6 +9,6 @@ with open('feeds.txt', 'r') as f:
 
 feeds = []
 for feed_url in feed_urls:
-    feed = feedparser.parse_feed(feed_url)
+    feed = feedparser.parse(feed_url)
     print(feed)
     feeds.append(feed)
