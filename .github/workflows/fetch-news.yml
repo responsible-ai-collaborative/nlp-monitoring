@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Clone the repository
-        run: git clone git@github.com:responsible-ai-collaborative/nlp-monitoring.git
+        run: git clone https://github.com/responsible-ai-collaborative/nlp-monitoring.git
 
       - name: Test if it worked
         run: curl http://lmcnulty.me/nlp-monitoring-running
