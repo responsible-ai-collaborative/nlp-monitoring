@@ -18,5 +18,5 @@ jobs:
         run: git clone https://github.com/responsible-ai-collaborative/nlp-monitoring.git
 
       - name: Test if it worked
-        run: curl http://lmcnulty.me/nlp-monitoring-running
+        run: python3 fetch-news.py
 
