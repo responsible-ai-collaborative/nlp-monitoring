@@ -1,0 +1,4 @@
+feedparser
+readability-lxml
+html2text
+pymongo
