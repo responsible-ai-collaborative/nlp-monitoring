@@ -17,4 +17,4 @@ jobs:
         run: git clone https://github.com/responsible-ai-collaborative/nlp-monitoring.git
 
       - name: fetch-news.py
-        run: python3 nlp-monitoring/fetch-news.yml
+        run: python3 nlp-monitoring/fetch-news.py
