@@ -11,7 +11,7 @@ from scipy import spatial
 from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
 
-MONGODB_URI = environ['MONGODB_CONNECTION_STRING']
+MONGODB_URI = environ.get('MONGODB_CONNECTION_STRING')
 MOCK = True 
 
 plaintext_reader = HTML2Text()
@@ -23,33 +23,33 @@ print("Fetching news...")
 with open('feeds.txt', 'r') as f:
     feed_urls = f.readlines()
 
-mongo_client = MongoClient(MONGODB_URI)
-incidents_collection = mongo_client['aiidprod'].incidents
-
 stemmer = PorterStemmer()
 
 m = np.array([0] * 768)
-for offset, incident in enumerate(incidents_collection.find(
-    { 'embedding': { '$exists': True } }, 
-    { 'embedding': { 'vector': True } }
-)):
-    i = offset + 1
 
-    # As the number of vectors contributing to the mean increases,
-    # the contribution of each one decreases:
-    #
-    # i=1 → m = (0/1)m + (1/1)v
-    # i=2 → m = (1/2)m + (1/2)v
-    # i=3 → m = (1/3)m + (2/3)v
-    # i=4 → m = (3/4)m + (1/4)v
-    # ...
-    v = np.array(incident['embedding']['vector'])
-    m = ( v * 1 / i) + (m * (i - 1) / i)
+if MONGODB_URI:
+    mongo_client = MongoClient(MONGODB_URI)
+    incidents_collection = mongo_client['aiidprod'].incidents
+
+    for offset, incident in enumerate(incidents_collection.find(
+        { 'embedding': { '$exists': True } }, 
+        { 'embedding': { 'vector': True } }
+    )):
+        i = offset + 1
+
+        # As the number of vectors contributing to the mean increases,
+        # the contribution of each one decreases:
+        #
+        # i=1 → m = (0/1)m + (1/1)v
+        # i=2 → m = (1/2)m + (1/2)v
+        # i=3 → m = (1/3)m + (2/3)v
+        # i=4 → m = (3/4)m + (1/4)v
+        # ...
+        v = np.array(incident['embedding']['vector'])
+        m = ( v * 1 / i) + (m * (i - 1) / i)
 
 mean_embedding = m
-
-print(mean_embedding)
-
+    
 for feed_url in feed_urls:
     feed = feedparser.parse(feed_url)
     for entry in feed['entries']:
@@ -99,7 +99,7 @@ for feed_url in feed_urls:
                 'NLP',
             ] if stemmer.stem(word).lower() in ' '.join(article_words)]
             
-            print(matching_keywords)
+            print('Matching Keywords:', matching_keywords)
 
 
             if (len(matching_keywords) > 0):
@@ -128,12 +128,13 @@ for feed_url in feed_urls:
 
                 article['embedding'] = nlp_response['body']['embedding']
 
-                article['similarity'] = spatial.distance.cosine(
-                    article['embedding']['vector'],
-                    mean_embedding
-                )
+                if not all(mean_embedding == 0):
+                    article['similarity'] = spatial.distance.cosine(
+                        article['embedding']['vector'],
+                        mean_embedding
+                    )
+                    print(article['similarity'])
 
-                print(article['similarity'])
         except Exception as e:
             print(e)
             continue
