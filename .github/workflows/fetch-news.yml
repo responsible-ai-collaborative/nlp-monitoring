@@ -23,3 +23,5 @@ jobs:
       - name: fetch-news.py
         run: python3 fetch-news.py
         working-directory: ./nlp-monitoring
+        env:
+          MONGODB_CONNECTION_STRING: ${{ secrets.MONGODB_CONNECTION_STRING }}
