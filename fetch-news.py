@@ -3,6 +3,7 @@ import requests
 import urllib
 import json
 import numpy as np
+import htmldate
 from pymongo import MongoClient
 from html2text import html2text, HTML2Text
 from readability import Document
@@ -14,7 +15,7 @@ from numpy.linalg import norm
 cosine_similarity = lambda a, b: np.dot(a, b)/(norm(a)*norm(b))
 
 MONGODB_URI = environ.get('MONGODB_CONNECTION_STRING')
-MOCK = False
+MOCK = True
 
 plaintext_reader = HTML2Text()
 plaintext_reader.ignore_links = True
@@ -80,9 +81,11 @@ for feed_url in feed_urls:
                 'title': article_doc.title(),
                 'text': html2text(summary),
                 'plain_text': plaintext_reader.handle(summary),
-                'url': article_url
+                'url': article_url,
+                'date_published': htmldate.find_date(article_response.text)
             }
             print(article['title'])
+            print(article['date_published'])
 
             article_words = [
                 stemmer.stem(word).lower() for word in
