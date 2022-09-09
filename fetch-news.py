@@ -12,7 +12,7 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
 
 MONGODB_URI = environ.get('MONGODB_CONNECTION_STRING')
-MOCK = True 
+MOCK = True
 
 plaintext_reader = HTML2Text()
 plaintext_reader.ignore_links = True
@@ -132,10 +132,12 @@ for feed_url in feed_urls:
                     #     }
                     # )
                     nlp_response = requests.get(
-                        aws_root + '/text-to-embed?' +
-                        urllib.parse.urlencode({
-                            'text': article['plain_text'],
-                        }),
+                        (
+                            aws_root + '/text-to-embed?' +
+                            urllib.parse.urlencode({
+                                'text': article['plain_text'],
+                            })
+                        )[0:2048],
                         timeout=10
                     ).json()
 
