@@ -12,7 +12,7 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
 
 MONGODB_URI = environ.get('MONGODB_CONNECTION_STRING')
-MOCK = True
+MOCK = False
 
 plaintext_reader = HTML2Text()
 plaintext_reader.ignore_links = True
