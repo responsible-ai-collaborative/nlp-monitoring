@@ -15,7 +15,7 @@ from numpy.linalg import norm
 cosine_similarity = lambda a, b: np.dot(a, b)/(norm(a)*norm(b))
 
 MONGODB_URI = environ.get('MONGODB_CONNECTION_STRING')
-MOCK = True
+MOCK = False
 
 plaintext_reader = HTML2Text()
 plaintext_reader.ignore_links = True
