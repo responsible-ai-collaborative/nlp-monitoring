@@ -27,9 +27,13 @@ stemmer = PorterStemmer()
 
 m = np.array([0] * 768)
 
+mongo_client = None
+incidents_collection = None
+candidates_collection = None
 if MONGODB_URI:
     mongo_client = MongoClient(MONGODB_URI)
     incidents_collection = mongo_client['aiidprod'].incidents
+    candidates_collection = mongo_client['aiidprod'].candidates
 
     for offset, incident in enumerate(incidents_collection.find(
         { 'embedding': { '$exists': True } }, 
@@ -55,8 +59,15 @@ for feed_url in feed_urls:
     for entry in feed['entries']:
         try:
             article_url = entry['link']
-
+            
             print("\nFetching", article_url)
+
+            if mongo_client:
+                result = candidates_collection.find_one({ 'url': article_url })
+                if result is not None:
+                    print('URL already processed. Skipping...')
+                    continue
+
             article_response = requests.get(article_url, timeout=10)
 
             article_doc = Document(article_response.text)
@@ -76,7 +87,7 @@ for feed_url in feed_urls:
                 word_tokenize(article['plain_text'])
             ]
 
-            matching_keywords = [ word for word in [
+            matching_keywords = [ word.strip() for word in [
                 ' AI ',
                 'artificial intelligence',
                 'machine learn',
@@ -100,6 +111,8 @@ for feed_url in feed_urls:
             ] if stemmer.stem(word).lower() in ' '.join(article_words)]
             
             print('Matching Keywords:', matching_keywords)
+
+            article['matching_keywords'] = matching_keywords
 
 
             if (len(matching_keywords) > 0):
@@ -134,6 +147,24 @@ for feed_url in feed_urls:
                         mean_embedding
                     )
                     print(article['similarity'])
+
+                    article['match'] = True
+
+                    if mongo_client:
+                        print('Uploading to MongoDB...')
+                        candidates_collection.insert_one(article)
+            else:
+                if mongo_client:
+                    print('Uploading to MongoDB...')
+                    candidates_collection.insert_one({ 
+                        'match': False, 
+                        'url': article['url'], 
+
+                        # Keeping the title will help us see
+                        # if things that should be accepted are rejected.
+                        'title': article['title']
+                    })
+                
 
         except Exception as e:
             print(e)
