@@ -1,7 +1,7 @@
 feedparser
 readability-lxml
 html2text
-pymongo
+pymongo[srv]
 nltk
 numpy
 scipy
