@@ -7,9 +7,11 @@ from pymongo import MongoClient
 from html2text import html2text, HTML2Text
 from readability import Document
 from os import environ
-from scipy import spatial
 from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
+from numpy.linalg import norm
+
+cosine_similarity = lambda a, b: np.dot(a, b)/(norm(a)*norm(b))
 
 MONGODB_URI = environ.get('MONGODB_CONNECTION_STRING')
 MOCK = False
@@ -144,7 +146,7 @@ for feed_url in feed_urls:
                 article['embedding'] = nlp_response['body']['embedding']
 
                 if not all(mean_embedding == 0):
-                    article['similarity'] = spatial.distance.cosine(
+                    article['similarity'] = cosine_similarity(
                         article['embedding']['vector'],
                         mean_embedding
                     )
