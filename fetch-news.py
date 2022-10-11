@@ -77,12 +77,17 @@ for feed_url in feed_urls:
 
             summary = article_doc.summary()
 
+            date_published = htmldate.find_date(article_response.text)
+
+            if not date_published:
+              continue
+
             article = {
                 'title': article_doc.title(),
                 'text': html2text(summary),
                 'plain_text': plaintext_reader.handle(summary),
                 'url': article_url,
-                'date_published': htmldate.find_date(article_response.text)
+                'date_published': date_published
             }
             print(article['title'])
             print(article['date_published'])
