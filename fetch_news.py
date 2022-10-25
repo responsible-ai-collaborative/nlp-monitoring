@@ -7,6 +7,29 @@ with open('data_keywords.txt', 'r') as f:
 with open('data_feeds.txt', 'r') as f: 
   feed_urls = [l for l in f.read().split('\n') if len(l.strip()) > 0]
 
+harm_keywords = [
+    'harm',
+    'crash',
+    'accident',
+    'injury',
+    'collision',
+    'justice',
+    'injustice',
+    'violation',
+    'mistreatment'
+    'fairness',
+    'unfairness',
+    'safety',
+    'bias',
+    'racism',
+    'sexism',
+    'homophobia',
+    'transphobia',
+    'stereotype'
+    'bigotry',
+    'discrimination'
+]
+
 def main(
     keywords = keywords, 
     feed_urls = feed_urls, 
@@ -163,8 +186,15 @@ def process_url(
             if stemmed_keywords[word].lower() in ' '.join(article_words)
         ]
         article['matching_keywords'] = matching_keywords
-        print('Matching Keywords:', article['matching_keywords'])
+        print('AI Keywords:', article['matching_keywords'])
         
+        matching_harm_keywords = [ 
+            word.strip() for word in harm_keywords
+            if stemmer.stem(word).lower() in ' '.join(article_words)
+        ]
+        article['matching_harm_keywords'] = matching_harm_keywords
+        print('Harm Keywords:', article['matching_harm_keywords'])
+
         matching_entities = [ 
             word.strip() for word in entities 
             if ' ' + (
