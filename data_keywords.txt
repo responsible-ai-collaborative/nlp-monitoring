@@ -22,3 +22,4 @@ language processing
 speech recognition
 machine translation
 text generation
+deepfake
