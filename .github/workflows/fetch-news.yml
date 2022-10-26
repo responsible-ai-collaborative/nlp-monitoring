@@ -21,8 +21,8 @@ jobs:
       - name: Install NLTK packages
         run: python3 -c 'import nltk; nltk.download("punkt")'
 
-      - name: fetch-news.py
-        run: python3 fetch-news.py
+      - name: fetch_news.py
+        run: python3 fetch_news.py
         working-directory: ./nlp-monitoring
         env:
           MONGODB_CONNECTION_STRING: ${{ secrets.MONGODB_CONNECTION_STRING }}
