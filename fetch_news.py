@@ -1,4 +1,4 @@
-MOCK = False
+MOCK = True
 aws_root = 'https://q3z6vr2qvj.execute-api.us-west-2.amazonaws.com'
 
 with open('data_keywords.txt', 'r') as f:
@@ -297,36 +297,42 @@ def process_url(
     except Exception as ex:
         traceback.print_exception(type(ex), ex, ex.__traceback__)
         return True
-    
-
 
 def get_article(article_url, text=None):
+    try:
+        mercury_output = json.loads(subprocess.check_output([
+          './node_modules/@postlight/mercury-parser/cli.js',
+          '--format', 'markdown',
+          article_url
+        ]).decode('utf-8'))
 
-    plaintext_reader = HTML2Text()
-    plaintext_reader.ignore_links = True
-    plaintext_reader.ignore_images = True
+        markdown = (
+          mercury_output['content']
+            .replace('\n\nAdvertisement\n\n', '\n\n') # arstechnica
+        )
 
-    article_response = requests.get(article_url, timeout=10)
+        plain_text = subprocess.check_output(
+          ['pandoc', '--from', 'markdown', '--to', 'plain'], 
+          input=markdown, 
+          encoding='utf-8'
+        )
 
-    article_doc = Document(article_response.text)
+        article = {
+            'title': mercury_output.get('title'),
+            'text': markdown,
+            'plain_text': plain_text,
+            'url': mercury_output.get('url') or article_url,
+            'date_published': mercury_output.get('date_published')
+        }
 
-    summary = text if text else article_doc.summary()
+        for key in article.keys():
+            if not article[key]:
+              return None
 
-    date_published = htmldate.find_date(article_response.text)
+        return article
 
-    article = {
-        'title': article_doc.title(),
-        'text': html2text(summary),
-        'plain_text': plaintext_reader.handle(summary),
-        'url': article_url,
-        'date_published': date_published
-    }
-
-    for key in article.keys():
-        if not article[key]:
-          return None
-
-    return article
+    except:
+        return None 
 
 def get_stemmed_keywords(keywords, stemmer=None):
     if not stemmer:
@@ -344,15 +350,12 @@ cosine_similarity = lambda a, b: np.dot(a, b) / (norm(a) * norm(b))
 import feedparser
 import requests
 import urllib
-import json
 import numpy as np
-import htmldate
 import traceback
 import time
 import json
+import subprocess
 from pymongo import MongoClient
-from html2text import html2text, HTML2Text
-from readability import Document
 from os import environ
 from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer

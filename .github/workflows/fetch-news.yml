@@ -14,12 +14,19 @@ jobs:
       - name: Clone the repository
         run: git clone https://github.com/responsible-ai-collaborative/nlp-monitoring.git
 
-      - name: Install dependencies
+      - name: Install native dependencies
+        run: apt install npm pandoc
+
+      - name: Install Python dependencies
         run: pip3 install -r requirements.txt
         working-directory: ./nlp-monitoring
-
+      
       - name: Install NLTK packages
         run: python3 -c 'import nltk; nltk.download("punkt")'
+
+      - name: Install JS dependencies
+        run: npm install
+        working-directory: ./nlp-monitoring
 
       - name: fetch_news.py
         run: python3 fetch_news.py
