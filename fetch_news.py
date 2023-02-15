@@ -322,7 +322,7 @@ def get_article(article_url, text=None):
             'text': markdown,
             'plain_text': plain_text,
             'url': mercury_output.get('url') or article_url,
-            'date_published': mercury_output.get('date_published')
+            'date_published': mercury_output.get('date_published')[0:10]
         }
 
         for key in article.keys():
