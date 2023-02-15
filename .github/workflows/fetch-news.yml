@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Clone the repository
-        run: git clone https://github.com/responsible-ai-collaborative/nlp-monitoring.git
+        run: git clone -b ${GITHUB_REF##*/} https://github.com/${GITHUB_REPOSITORY}
 
       - name: Install native dependencies
         run: sudo apt install npm pandoc
