@@ -121,10 +121,6 @@ def get_mean_embedding(mongo_client = None, connection_string = None, classifica
         classifications_collection = mongo_client['aiidprod'].classifications
         classifications_query = {   
           'namespace': classification[0], 
-#          '$or': [
-#              {key: {'$elemMatch': { '$eq' : classification[2] }}},
-#              {key: classification[2]},
-#          ]
           'attributes': { 
               '$elemMatch': { 
                   'short_name': classification[1], 
@@ -132,14 +128,12 @@ def get_mean_embedding(mongo_client = None, connection_string = None, classifica
               }
           }
         }
-        print("""query""", query);
         incident_ids = [
             incident['incident_id'] for incident in classifications_collection.find(
                 classifications_query,
                 {'incident_id': True}
             )
         ]
-        print("""incident_ids""", incident_ids);
         query['incident_id'] = {'$in': incident_ids}
 
     incidents_collection = mongo_client['aiidprod'].incidents
@@ -200,11 +194,11 @@ def process_url(
     try:
         print("\nFetching", article_url)
 
-#        if mongo_client != None:
-#            result = candidates_collection.find_one({ 'url': article_url })
-#            if result is not None and not force:
-#                print('URL already processed. Skipping...')
-#                return False
+        if mongo_client != None:
+            result = candidates_collection.find_one({ 'url': article_url })
+            if result is not None and not force:
+                print('URL already processed. Skipping...')
+                return False
 
         article = get_article(article_url, text=text)
         if not article: return True
@@ -248,12 +242,6 @@ def process_url(
                 with open('data_mock.json') as f: 
                     nlp_response = json.load(f) 
             else:
-                # nlp_response = requests.post(
-                #     aws_root + '/text-to-embed',
-                #     data = {
-                #         'text': article['plain_text']
-                #     }
-                # )
                 nlp_response = requests.get(
                     (
                         aws_root + '/text-to-embed?' +
