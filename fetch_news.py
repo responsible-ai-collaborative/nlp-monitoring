@@ -1,4 +1,4 @@
-MOCK = True
+MOCK = False
 aws_root = 'https://q3z6vr2qvj.execute-api.us-west-2.amazonaws.com'
 
 with open('data_keywords.txt', 'r') as f:
