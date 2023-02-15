@@ -117,20 +117,29 @@ def get_mean_embedding(mongo_client = None, connection_string = None, classifica
     query = { 'embedding': { '$exists': True } }
 
     if classification:
+        print("""classification""", classification);
         classifications_collection = mongo_client['aiidprod'].classifications
-        key = 'classifications.' + classification[1]
+        classifications_query = {   
+          'namespace': classification[0], 
+#          '$or': [
+#              {key: {'$elemMatch': { '$eq' : classification[2] }}},
+#              {key: classification[2]},
+#          ]
+          'attributes': { 
+              '$elemMatch': { 
+                  'short_name': classification[1], 
+                  'value_json': {'$regex': classification[2]}
+              }
+          }
+        }
+        print("""query""", query);
         incident_ids = [
             incident['incident_id'] for incident in classifications_collection.find(
-                { 
-                    'namespace': classification[0], 
-                    '$or': [
-                        {key: {'$elemMatch': { '$eq' : classification[2] }}},
-                        {key: classification[2]},
-                    ]
-                }, 
+                classifications_query,
                 {'incident_id': True}
             )
         ]
+        print("""incident_ids""", incident_ids);
         query['incident_id'] = {'$in': incident_ids}
 
     incidents_collection = mongo_client['aiidprod'].incidents
@@ -191,11 +200,11 @@ def process_url(
     try:
         print("\nFetching", article_url)
 
-        if mongo_client != None:
-            result = candidates_collection.find_one({ 'url': article_url })
-            if result is not None and not force:
-                print('URL already processed. Skipping...')
-                return False
+#        if mongo_client != None:
+#            result = candidates_collection.find_one({ 'url': article_url })
+#            if result is not None and not force:
+#                print('URL already processed. Skipping...')
+#                return False
 
         article = get_article(article_url, text=text)
         if not article: return True
