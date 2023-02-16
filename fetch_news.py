@@ -1,4 +1,4 @@
-MOCK = True
+MOCK = False
 aws_root = 'https://q3z6vr2qvj.execute-api.us-west-2.amazonaws.com'
 
 with open('data_keywords.txt', 'r') as f:
@@ -117,7 +117,6 @@ def get_mean_embedding(mongo_client = None, connection_string = None, classifica
     query = { 'embedding': { '$exists': True } }
 
     if classification:
-        print("""classification""", classification);
         classifications_collection = mongo_client['aiidprod'].classifications
         classifications_query = {   
           'namespace': classification[0], 
