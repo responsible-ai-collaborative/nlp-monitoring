@@ -1,4 +1,4 @@
-MOCK = False
+MOCK = True
 aws_root = 'https://q3z6vr2qvj.execute-api.us-west-2.amazonaws.com'
 
 with open('data_keywords.txt', 'r') as f:
@@ -318,7 +318,7 @@ def get_article(article_url, text=None):
             'title': mercury_output.get('title'),
             'text': markdown,
             'plain_text': plain_text,
-            'url': mercury_output.get('url') or article_url,
+            'url': article_url,
             'date_published': mercury_output.get('date_published')[0:10]
         }
 
