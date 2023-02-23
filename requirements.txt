@@ -1,7 +1,4 @@
 feedparser
-readability-lxml
-html2text
 pymongo[srv]
 nltk
 numpy
-htmldate
