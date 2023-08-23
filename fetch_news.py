@@ -1,5 +1,5 @@
-MOCK = False
 aws_root = 'https://q3z6vr2qvj.execute-api.us-west-2.amazonaws.com'
+ignored_entities = ['Cruise', 'Grab' ]
 
 with open('data_keywords.txt', 'r') as f:
     keywords  = [l for l in f.read().split('\n') if len(l.strip()) > 0]
@@ -7,17 +7,12 @@ with open('data_keywords.txt', 'r') as f:
 with open('data_harm_keywords.txt', 'r') as f:
     harm_keywords  = [l for l in f.read().split('\n') if len(l.strip()) > 0]
 
-ignored_entities = [
-    'Cruise',
-    'Grab',
-]
-
 def main(
     keywords = keywords, 
     connection_string = None,
     upload = True,
     force = False,
-    mock = MOCK,
+    mock = False,
     seconds_between_requests = 2
 ):
     print("Fetching news...")
@@ -74,6 +69,8 @@ def main(
                 stemmed_harm_keywords=stemmed_harm_keywords,
             ):
                 last_hit = now
+
+    delete_old_article_text(mongo_client)
 
 def get_entities(mongo_client = None, connection_string = None):
     if not mongo_client:
@@ -156,6 +153,20 @@ def get_mean_embedding(mongo_client = None, connection_string = None, classifica
 
     return m
 
+def delete_old_article_text(mongo_client):
+    candidates_collection = mongo_client['aiidprod'].candidates
+    for article in candidates_collection.find({'text': {'$exists': True}}):
+      article_date = dateutil.parser.parse(
+        article.get('date_published') or 
+        article.get('date_scraped') or 
+        '2023-08-22'
+      )
+      article_age = datetime.datetime.now() - article_date
+      if article.get('text') and article_age.days > 30:
+        candidates_collection.update_one(
+          { 'url': article['url'] },
+          {'$unset': {'text': '', 'plain_text': ''}}
+        )
 
 def process_url(
     article_url,
@@ -194,8 +205,8 @@ def process_url(
         print("\nFetching", article_url)
 
         if mongo_client != None:
-            result = candidates_collection.find_one({ 'url': article_url })
-            if result is not None and not force:
+            article = candidates_collection.find_one({ 'url': article_url })
+            if article is not None and not force:
                 print('URL already processed. Skipping...')
                 return False
 
@@ -318,7 +329,8 @@ def get_article(article_url, text=None):
             'text': markdown,
             'plain_text': plain_text,
             'url': article_url,
-            'date_published': mercury_output.get('date_published')[0:10]
+            'date_published': mercury_output.get('date_published')[0:10],
+            'date_scraped': datetime.datetime.now().isoformat()[0:10],
         }
 
         for key in article.keys():
@@ -351,6 +363,8 @@ import traceback
 import time
 import json
 import subprocess
+import datetime
+import dateutil.parser
 from pymongo import MongoClient
 from os import environ
 from nltk.tokenize import word_tokenize
