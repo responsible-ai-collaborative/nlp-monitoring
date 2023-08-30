@@ -1,5 +1,5 @@
-MOCK = False
 aws_root = 'https://q3z6vr2qvj.execute-api.us-west-2.amazonaws.com'
+ignored_entities = ['Cruise', 'Grab' ]
 
 with open('data_keywords.txt', 'r') as f:
     keywords  = [l for l in f.read().split('\n') if len(l.strip()) > 0]
@@ -7,17 +7,12 @@ with open('data_keywords.txt', 'r') as f:
 with open('data_harm_keywords.txt', 'r') as f:
     harm_keywords  = [l for l in f.read().split('\n') if len(l.strip()) > 0]
 
-ignored_entities = [
-    'Cruise',
-    'Grab',
-]
-
 def main(
     keywords = keywords, 
     connection_string = None,
     upload = True,
     force = False,
-    mock = MOCK,
+    mock = False,
     seconds_between_requests = 2
 ):
     print("Fetching news...")
@@ -28,16 +23,6 @@ def main(
     mongo_client = get_mongo_client(connection_string)
 
     mean_embedding = get_mean_embedding(mongo_client=mongo_client)
-
-    classifications = [
-        ['CSET', 'Sector of Deployment', 'Transportation and storage'],
-        ['CSET', 'Harm Type', 'Harm to social or political systems'],
-    ]
-    classification_mean_embeddings = {}
-    for classification in classifications:
-        classification_mean_embeddings[
-            ':'.join(classification)
-        ] = get_mean_embedding(mongo_client=mongo_client, classification=classification)
 
     stemmer = PorterStemmer()
     stemmed_keywords = get_stemmed_keywords(keywords, stemmer=stemmer)
@@ -61,7 +46,6 @@ def main(
                 entry['link'], 
                 text=text,
                 mean_embedding=mean_embedding, 
-                classification_mean_embeddings=classification_mean_embeddings,
                 mongo_client=mongo_client, 
                 keywords = keywords,
                 stemmed_keywords=stemmed_keywords,
@@ -75,11 +59,13 @@ def main(
             ):
                 last_hit = now
 
+    if mongo_client:
+        delete_old_article_text(mongo_client)
+
 def get_entities(mongo_client = None, connection_string = None):
     if not mongo_client:
         mongo_client = get_mongo_client(connection_string)
-    if not mongo_client:
-        raise Exception("No connection string provided")
+
     incidents_collection = mongo_client['aiidprod'].incidents
 
     entity_fields = [
@@ -102,38 +88,20 @@ def get_entities(mongo_client = None, connection_string = None):
 
     return entities 
 
-def get_mongo_client(connection_string = None):
+def get_mongo_client(connection_string = None, required = False):
+    connection_string = connection_string or environ.get('MONGODB_CONNECTION_STRING')
     if not connection_string:
-        connection_string = environ.get('MONGODB_CONNECTION_STRING')
-    if connection_string:
-        return MongoClient(connection_string)
+        if required:
+            raise Exception("No connection string provided")
+        else:
+            return None
+    return MongoClient(connection_string)
  
-def get_mean_embedding(mongo_client = None, connection_string = None, classification = None):
+def get_mean_embedding(mongo_client = None, connection_string = None):
     if not mongo_client:
         mongo_client = get_mongo_client(connection_string)
-    if not mongo_client:
-        raise Exception("No connection string provided")
     
     query = { 'embedding': { '$exists': True } }
-
-    if classification:
-        classifications_collection = mongo_client['aiidprod'].classifications
-        classifications_query = {   
-          'namespace': classification[0], 
-          'attributes': { 
-              '$elemMatch': { 
-                  'short_name': classification[1], 
-                  'value_json': {'$regex': classification[2]}
-              }
-          }
-        }
-        incident_ids = [
-            incident['incident_id'] for incident in classifications_collection.find(
-                classifications_query,
-                {'incident_id': True}
-            )
-        ]
-        query['incident_id'] = {'$in': incident_ids}
 
     incidents_collection = mongo_client['aiidprod'].incidents
     m = np.array([0] * 768)
@@ -156,25 +124,39 @@ def get_mean_embedding(mongo_client = None, connection_string = None, classifica
 
     return m
 
+def delete_old_article_text(mongo_client):
+    candidates_collection = mongo_client['aiidprod'].candidates
+    for article in candidates_collection.find({'text': {'$exists': True}}):
+        article_date = dateutil.parser.parse(
+            article.get('date_published') or 
+            article.get('date_scraped') or 
+            '2023-08-30' # Date at which date_scraped started being collected.
+        )
+        article_age = datetime.datetime.now() - article_date
+        if article.get('text') and article_age.days > 30:
+            candidates_collection.update_one(
+                { 'url': article['url'] },
+                {'$unset': {'text': '', 'plain_text': ''}}
+            )
 
 def process_url(
     article_url,
-    mean_embedding = [0] * 768,
-    classification_mean_embeddings=None,
-    keywords = keywords,
+    mean_embedding=[0] * 768,
+    keywords=keywords,
+    harm_keywords=harm_keywords,
     text=None,
     connection_string = None,
     mongo_client = None, 
-    stemmed_keywords = None,
     stemmer = None,
     upload = False,
     force = False,
     mock = True,
-    entities=None,
+    entities=[],
+    stemmed_keywords = None,
     stemmed_entities=None,
     stemmed_harm_keywords=None,
 ):
-    if not mongo_client: mongo_client = get_mongo_client(connection_string)
+    if not mongo_client: mongo_client = get_mongo_client(connection_string, required = False)
     candidates_collection = None
     if mongo_client:
         candidates_collection = mongo_client['aiidprod'].candidates
@@ -185,7 +167,7 @@ def process_url(
     if not stemmer: stemmer = PorterStemmer()
     if not stemmed_keywords: 
         stemmed_keywords = get_stemmed_keywords(keywords, stemmer=stemmer)
-    if not stemmed_keywords: 
+    if not stemmed_harm_keywords: 
         stemmed_harm_keywords = get_stemmed_keywords(harm_keywords, stemmer=stemmer)
     if not stemmed_entities: 
         stemmed_entities= get_stemmed_keywords(entities, stemmer=stemmer)
@@ -194,15 +176,17 @@ def process_url(
         print("\nFetching", article_url)
 
         if mongo_client != None:
-            result = candidates_collection.find_one({ 'url': article_url })
-            if result is not None and not force:
+            article = candidates_collection.find_one({ 'url': article_url })
+            if article is not None and not force:
                 print('URL already processed. Skipping...')
                 return False
 
         article = get_article(article_url, text=text)
-        if not article: return True
-        print(article['title'])
-        print(article['date_published'])
+        if not article: 
+            print("Could not get article")
+            return False
+        print("Title:", article['title'])
+        print("Date Published:", article['date_published'])
 
         article_words = [
             stemmer.stem(word).lower() for word in
@@ -218,7 +202,7 @@ def process_url(
         
         matching_harm_keywords = [ 
             word.strip() for word in harm_keywords
-            if ' ' + stemmed_harm_keywords[word].lower() + ' ' in ' '.join(article_words)
+            if ' ' + (stemmed_harm_keywords.get(word) or "").lower() + ' ' in ' '.join(article_words)
         ]
         article['matching_harm_keywords'] = matching_harm_keywords
         print('Harm Keywords:', article['matching_harm_keywords'])
@@ -258,19 +242,7 @@ def process_url(
                 mean_embedding
             )
 
-            if classification_mean_embeddings:
-                article['classification_similarity'] = []
-                for key in classification_mean_embeddings.keys():
-                    article['classification_similarity'].append({
-                        'classification': key, 
-                        'similarity': cosine_similarity(
-                            article['embedding']['vector'],
-                            classification_mean_embeddings[key]
-                        )
-                    })
-
             print('Mock Similarity' if mock else 'Similarity:', article['similarity'])
-            print('Mock Classifiction Similarity' if mock else 'Classification Similarity:', article['classification_similarity'])
 
             article['match'] = True
 
@@ -288,11 +260,11 @@ def process_url(
                     # if things that should be accepted are rejected.
                     'title': article['title']
                 })
-        return True
+        return article
 
     except Exception as ex:
         traceback.print_exception(type(ex), ex, ex.__traceback__)
-        return True
+        return False
 
 def get_article(article_url, text=None):
     try:
@@ -318,16 +290,17 @@ def get_article(article_url, text=None):
             'text': markdown,
             'plain_text': plain_text,
             'url': article_url,
-            'date_published': mercury_output.get('date_published')[0:10]
+            'date_published': (mercury_output.get('date_published') or "")[0:10],
+            'date_scraped': datetime.datetime.now().isoformat()[0:10],
         }
 
-        for key in article.keys():
-            if not article[key]:
-              return None
+        if not article.get('text'):
+            return None
 
         return article
 
-    except:
+    except Exception as ex:
+        traceback.print_exception(type(ex), ex, ex.__traceback__)
         return None 
 
 def get_stemmed_keywords(keywords, stemmer=None):
@@ -351,6 +324,8 @@ import traceback
 import time
 import json
 import subprocess
+import datetime
+import dateutil.parser
 from pymongo import MongoClient
 from os import environ
 from nltk.tokenize import word_tokenize
