@@ -124,12 +124,14 @@ def get_mean_embedding(mongo_client = None, connection_string = None, classifica
               }
           }
         }
-        incident_ids = [
-            incident['incident_id'] for incident in classifications_collection.find(
-                classifications_query,
-                {'incident_id': True}
-            )
-        ]
+        classifications = classifications_collection.find(
+            classifications_query,
+            {'incidents': True}
+        )
+        incident_ids = []
+        for classification in classifications:
+            incident_ids += classification['incidents']
+
         query['incident_id'] = {'$in': incident_ids}
 
     incidents_collection = mongo_client['aiidprod'].incidents
@@ -156,17 +158,17 @@ def get_mean_embedding(mongo_client = None, connection_string = None, classifica
 def delete_old_article_text(mongo_client):
     candidates_collection = mongo_client['aiidprod'].candidates
     for article in candidates_collection.find({'text': {'$exists': True}}):
-      article_date = dateutil.parser.parse(
-        article.get('date_published') or 
-        article.get('date_scraped') or 
-        '2023-08-22'
-      )
-      article_age = datetime.datetime.now() - article_date
-      if article.get('text') and article_age.days > 30:
-        candidates_collection.update_one(
-          { 'url': article['url'] },
-          {'$unset': {'text': '', 'plain_text': ''}}
+        article_date = dateutil.parser.parse(
+            article.get('date_published') or 
+            article.get('date_scraped') or 
+            '2023-08-30' # Date at which date_scraped started being collected.
         )
+        article_age = datetime.datetime.now() - article_date
+        if article.get('text') and article_age.days > 30:
+            candidates_collection.update_one(
+                { 'url': article['url'] },
+                {'$unset': {'text': '', 'plain_text': ''}}
+            )
 
 def process_url(
     article_url,
