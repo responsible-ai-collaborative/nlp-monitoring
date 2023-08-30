@@ -1,11 +1,6 @@
 feedparser
-readability-lxml
-html2text
 pymongo[srv]
 nltk
 numpy
-<<<<<<< Updated upstream
 htmldate
-=======
 dateutil
->>>>>>> Stashed changes

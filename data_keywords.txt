@@ -1,0 +1,25 @@
+ AI 
+artificial intelligence
+machine learning
+deep learning
+neural net
+algorithmic bias
+algorithmic fairness
+unfair algorithm
+biased algorithm
+computer vision
+facial recognition
+face detection
+object detection
+object recognition
+self driving
+self-driving
+autonomous vehicle
+autonomous driving
+NLP
+language model
+language processing
+speech recognition
+machine translation
+text generation
+deepfake
