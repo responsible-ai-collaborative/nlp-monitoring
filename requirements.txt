@@ -3,4 +3,4 @@ pymongo[srv]
 nltk
 numpy
 htmldate
-dateutil
+python-dateutil
