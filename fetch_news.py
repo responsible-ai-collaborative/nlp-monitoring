@@ -127,17 +127,31 @@ def get_mean_embedding(mongo_client = None, connection_string = None):
 def delete_old_article_text(mongo_client):
     candidates_collection = mongo_client['aiidprod'].candidates
     for article in candidates_collection.find({'text': {'$exists': True}}):
-        article_date = dateutil.parser.parse(
-            article.get('date_published') or 
-            article.get('date_scraped') or 
-            '2023-08-30' # Date at which date_scraped started being collected.
-        )
-        article_age = datetime.datetime.now() - article_date
-        if article.get('text') and article_age.days > 30:
-            candidates_collection.update_one(
-                { 'url': article['url'] },
-                {'$unset': {'text': '', 'plain_text': ''}}
-            )
+        try:
+            article_date = None
+            if article.get('date_published'):
+                try:
+                    article_date = dateutil.parser.parse(article['date_published'])
+                except:
+                    pass
+                if not article_date and article.get('date_scraped'):
+                    try:
+                        article_date = dateutil.parser.parse(article['date_scraped'])
+                    except:
+                        pass
+                if not article_date:
+                    # Date at which date_scraped started being collected.
+                    article_date = dateutil.parser.parse('2023-08-30') 
+                  
+                article_age = datetime.datetime.now() - article_date
+                if article.get('text') and article_age.days > 30:
+                    candidates_collection.update_one(
+                        { 'url': article['url'] },
+                        {'$unset': {'text': '', 'plain_text': ''}}
+                    )
+        except Exception as ex:
+            print("Could not delete article", article)
+            traceback.print_exception(type(ex), ex, ex.__traceback__)
 
 def process_url(
     article_url,
