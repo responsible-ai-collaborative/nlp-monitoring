@@ -60,7 +60,7 @@ def main(
                 last_hit = now
 
     if mongo_client:
-        delete_old_article_text(mongo_client)
+        trim_old_articles(mongo_client)
 
 def get_entities(mongo_client = None, connection_string = None):
     if not mongo_client:
@@ -124,9 +124,33 @@ def get_mean_embedding(mongo_client = None, connection_string = None):
 
     return m
 
-def delete_old_article_text(mongo_client):
+def trim_old_articles(mongo_client):
     candidates_collection = mongo_client['aiidprod'].candidates
-    for article in candidates_collection.find({'text': {'$exists': True}}):
+
+    removal_cutoff_date = (
+      datetime.datetime.now() - datetime.timedelta(days=90)
+    ).isoformat()[0:10]
+
+    candidates_collection.delete_many({
+        '$or': [
+            {'date_scraped':   {'$lt': removal_cutoff_date }},
+            {'date_published': {'$lt': removal_cutoff_date }},
+            {
+                '$and': [
+                    {'date_scraped':   {'$exists': False }},
+                    {'date_published': {'$exists': False }},
+                ]
+            }
+        ]
+    })
+
+    for article in candidates_collection.find({
+        '$or': [
+            {'text':       {'$exists': True}},
+            {'embedding':  {'$exists': True}},
+            {'plain_text': {'$exists': True}},
+        ]
+    }):
         try:
             article_date = None
             if article.get('date_published'):
@@ -147,7 +171,7 @@ def delete_old_article_text(mongo_client):
                 if article.get('text') and article_age.days > 30:
                     candidates_collection.update_one(
                         { 'url': article['url'] },
-                        {'$unset': {'text': '', 'plain_text': ''}}
+                        {'$unset': {'text': '', 'plain_text': '', 'embedding': ''}}
                     )
         except Exception as ex:
             print("Could not delete article", article)
@@ -270,9 +294,8 @@ def process_url(
                     'match': False, 
                     'url': article['url'], 
 
-                    # Keeping the title will help us see
-                    # if things that should be accepted are rejected.
-                    'title': article['title']
+                    'date_published': article['date_published'],
+                    'date_scraped': article['date_scraped'],
                 })
         return article
 
