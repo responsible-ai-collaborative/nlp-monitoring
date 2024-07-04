@@ -12,7 +12,7 @@ def main(
     connection_string = None,
     upload = True,
     force = False,
-    mock = False,
+    mock = True,
     seconds_between_requests = 2
 ):
     print("Fetching news...")
@@ -60,6 +60,7 @@ def main(
                 last_hit = now
 
     if mongo_client:
+        delete_old_articles(mongo_client)
         trim_old_articles(mongo_client)
 
 def get_entities(mongo_client = None, connection_string = None):
@@ -124,7 +125,7 @@ def get_mean_embedding(mongo_client = None, connection_string = None):
 
     return m
 
-def trim_old_articles(mongo_client):
+def delete_old_articles(mongo_client):
     candidates_collection = mongo_client['aiidprod'].candidates
 
     removal_cutoff_date = (
@@ -143,6 +144,10 @@ def trim_old_articles(mongo_client):
             }
         ]
     })
+
+
+def trim_old_articles(mongo_client):
+    candidates_collection = mongo_client['aiidprod'].candidates
 
     for article in candidates_collection.find({
         '$or': [
@@ -174,7 +179,6 @@ def trim_old_articles(mongo_client):
                         {'$unset': {'text': '', 'plain_text': '', 'embedding': ''}}
                     )
         except Exception as ex:
-            print("Could not delete article", article)
             traceback.print_exception(type(ex), ex, ex.__traceback__)
 
 def process_url(
