@@ -22,7 +22,7 @@ jobs:
         working-directory: ./nlp-monitoring
       
       - name: Install NLTK packages
-        run: python3 -c 'import nltk; nltk.download("punkt")'
+        run: python3 -c 'import nltk; nltk.download("punkt_tab")'
 
       - name: Install JS dependencies
         run: npm install
