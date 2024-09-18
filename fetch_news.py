@@ -12,7 +12,7 @@ def main(
     connection_string = None,
     upload = True,
     force = False,
-    mock = True,
+    mock = False,
     seconds_between_requests = 2
 ):
     print("Fetching news...")
